@@ -8,7 +8,9 @@ import re
 from pytrends.request import TrendReq
 import pandas as pd
 from Site import Site
-class Ranking:
+
+
+class Data_Preparation:
     def __init__(self):
         self.LA_countries_and_codes = {"Argentina": "ar", "Bolivia" :"bo",
         "Brazil" : "br", "Chile" : "cl", "Colombia" : "co", "Costa Rica" : "cr",
@@ -17,7 +19,7 @@ class Ranking:
         "Nicaragua" : "ni", "Panama" : "pa", "Paraguay" : "py", "Peru": "pe",
          "Uruguay": "uy", "Venezuela": "ve"}
 
-        self.countries = []
+
         self.__country_factory__()
 
     def __country_factory__(self):
@@ -52,6 +54,24 @@ class Ranking:
             print(g.text)
             print('-----')'''
 
+    def __is_a_url__(self, url):
+        if not isinstance(url, str):
+            raise TypeError('url must to be a string')
+
+        regex = re.compile(
+        r'^(?:http|ftp)s?://' # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+        r'localhost|' #localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+        r'(?::\d+)?' # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
+        return re.match(regex, "http://www.example.com") is not None
+
+    def __get_the_site_name_from_URL(self, url):
+        if not self.__is_a_url__(url):
+            raise TypeError("Typerror: url must have URL format")
+
     def __filter_sites__(self):
         df = self.__load_candidate_file__()
 
@@ -75,6 +95,13 @@ class Ranking:
 
             self.__filter_by_related_topics__(site_name, row['Top Sites on Google'], lang, filtered_site_list)
 
+        self.__create_xlsx_files__(filtered_site_list=filtered_site_list)
+
+    def __create_xlsx_files__(self, filtered_site_list):
+
+        if all(not isinstance(n, Site) for n in filtered_site_list):
+            raise TypeError("TypeError: filtered_site_list must to be a list of Site objects")
+
         # create the dataframe that will contain the access statistics
         df_filtered_sites_access_statistics = pd.DataFrame(columns=['site_name', 'lang', 'site_url',
         'monthly_visits_in_milions', 'average_visit_time', 'average_visited_pages', 'bounce_rate'])
@@ -82,24 +109,22 @@ class Ranking:
         # create the DF that will contain the interest infornation about the sites
         df_filtered_sites_interest_over_time = pd.DataFrame(columns=['site_name', 'date', 'interest_percentage'])
 
+        # Create the XLSX files that will con
         for s in filtered_site_list:
-
             df_filtered_sites_access_statistics = df_filtered_sites_access_statistics.append({'site_name': s.name,
             'lang': s.lang, 'site_url': s.url}, ignore_index=True)
 
-
-            df_google_trends = self.__get_interest_over_time__(s.name, lang)
+            df_google_trends = self.__get_interest_over_time__(s.name, s.lang)
 
             for index, row in df_google_trends.iterrows():
                 df_filtered_sites_interest_over_time = df_filtered_sites_interest_over_time.append({'site_name' : s.name,
                  'date' : index, 'interest_percentage': row[s.name]}, ignore_index=True)
 
-
         df_filtered_sites_access_statistics = df_filtered_sites_access_statistics.drop_duplicates(subset='site_name', keep="last")
 
+        # save the files that will contain the data about the filtered sites
         df_filtered_sites_interest_over_time.to_excel('sites_interest_over_time.xlsx')
         df_filtered_sites_access_statistics.to_excel("sites_access_statistics.xlsx")
-
 
     def __load_candidate_file__(self):
         df = pd.read_excel("initial_candidates.xlsx")
@@ -107,7 +132,7 @@ class Ranking:
 
     def __check_if_is_piracy_related__(self, related_topics):
         if type(related_topics) is not list or all(not isinstance(n, str) for n in related_topics):
-            raise TypeError("TypeError: elated_topics must to be a list of strings")
+            raise TypeError("TypeError: related_topics must to be a list of strings")
 
         # categories of interested that were empirically defined
         categories_of_interest = ['torrent', 'download', 'upload',
@@ -141,6 +166,7 @@ class Ranking:
             if self.__check_if_is_piracy_related__(related_topics=related_t):
                 filtered_site_list.append(Site(term, url, lang))
 
+
     def __get_interest_over_time__(self, site_name, lang):
         if type(site_name) is not str or type(lang) is not str:
             raise TypeError('''TypeError: Please, site_name and lang must to be a strings''')
@@ -152,5 +178,4 @@ class Ranking:
         return pytrends.interest_over_time()
 
 
-
-rank = Ranking()
+rank = Data_Preparation()
