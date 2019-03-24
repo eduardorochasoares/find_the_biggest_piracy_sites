@@ -1,3 +1,5 @@
+__author__ = 'rsoares.eduardo@gmail.com (Eduardo R. Soares)'
+
 import pprint
 from googleapiclient.discovery import build
 import urllib
@@ -20,39 +22,58 @@ class Data_Preparation:
          "Uruguay": "uy", "Venezuela": "ve"}
 
 
-        self.__country_factory__()
-
-    def __country_factory__(self):
-
-
+    def __prepare_data__(self):
+        self.__create_initial_candidates__()
         self.__filter_sites__()
 
-    '''
-    def __get_candidates__(self, country):
-        if type(country) is not Country:
-            raise TypeError("__get_candidates__ expects a Country object as parameter")
+    def __create_initial_candidates__(self):
+        df_initial_candidates = pd.DataFrame(columns=['Country', 'Top Sites on Google'])
 
-        if country.name == "Brazil":
-            lr = "lan_pt"
+        for country in list(self.LA_countries_and_codes.keys()):
+            links = self.__get_candidates__(country)
+            for l in links:
+                df_initial_candidates = df_initial_candidates.append({
+                    'Country': country, 'Top Sites on Google': l
+                    },
+                    ignore_index=True
+                )
+
+        df_initial_candidates.to_excel("initial_candidates.xlsx")
+
+    def __get_candidates__(self, country_name):
+        if type(country_name) is not str:
+            raise TypeError("__get_candidates__ expects a str as country_name")
+
+        if country_name == "Brazil":
+            lr = "lang_pt"
             queries = ['séries e filmes torrent gratis', 'séries e filmes online gratis']
         else:
-            lr = "lan_es"
+            lr = "lang_es"
             queries = ['peliculas y series online gratis', 'peliculas y series torrent gratis']
 
 
-        query = urllib.parse.quote_plus(query)
+        # setup the google search API
+        service = build("customsearch", "v1",
+            developerKey="AIzaSyCMlx7CuNILdp-wQ0eYpLbw3cKoSU8UtDU")
 
-        url = 'https://google.com/search?start=1&lr='+lr+'&gl='+country.code+'&q=' + query
-        proxyDict = {
-              "http"  : "177.69.122.180:8080"
-            }
-        response = requests.get(url, proxies=proxyDict)
+        links_of_first_page_in_Google = []
 
-        soup = BeautifulSoup(response.text, 'lxml')
-        print(soup)
-        for g in soup.find_all(class_='g'):
-            print(g.text)
-            print('-----')'''
+        # do the search for each query in list "queries"
+        for q in queries:
+            res = service.cse().list(
+                q=q,
+                cx='003349076991240301344:twun2lpoio8',
+                gl = self.LA_countries_and_codes[country_name],
+                lr = lr,
+            ).execute()
+
+            # gets the link of the sites
+            for item in res['items']:
+                links_of_first_page_in_Google.append('https://' + item['displayLink'])
+
+        return links_of_first_page_in_Google
+
+
 
     def __is_a_url__(self, url):
         if not isinstance(url, str):
@@ -66,7 +87,7 @@ class Data_Preparation:
         r'(?::\d+)?' # optional port
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
-        return re.match(regex, "http://www.example.com") is not None
+        return re.match(regex, url) is not None
 
     def __get_the_site_name_from_URL(self, url):
         if not self.__is_a_url__(url):
@@ -109,7 +130,8 @@ class Data_Preparation:
         # create the DF that will contain the interest infornation about the sites
         df_filtered_sites_interest_over_time = pd.DataFrame(columns=['site_name', 'date', 'interest_percentage'])
 
-        # Create the XLSX files that will con
+        # append data into the Dataframes that will contain the access statistics and
+        # interest over time of each select site
         for s in filtered_site_list:
             df_filtered_sites_access_statistics = df_filtered_sites_access_statistics.append({'site_name': s.name,
             'lang': s.lang, 'site_url': s.url}, ignore_index=True)
@@ -176,6 +198,3 @@ class Data_Preparation:
         pytrends.build_payload(kw_list, cat=0, timeframe='today 12-m', geo='', gprop='')
         # returns a dataframe with the relative interest of a site over time
         return pytrends.interest_over_time()
-
-
-rank = Data_Preparation()
