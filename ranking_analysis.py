@@ -124,24 +124,38 @@ class Ranking:
         for s in site_names:
             monthly_visits_in_milions = float(self.df_site_access_statistics.loc[
             self.df_site_access_statistics['site_name'] == s]['monthly_visits_in_milions'])
-            average_visited_pages = float(self.df_site_access_statistics.loc[
-            self.df_site_access_statistics['site_name'] == s]['average_visited_pages'])
+            bounce_rate = float(self.df_site_access_statistics.loc[
+            self.df_site_access_statistics['site_name'] == s]['bounce_rate'])
             growth_rate_list = list(self.df_interest_over_time.loc[
             self.df_interest_over_time['site_name'] == s]['interest_percentage'])
 
             growth_rate = self.__calculate_average_growth_rate__(growth_rate_list, 4)
-            top_20[s] = [monthly_visits_in_milions, average_visited_pages, growth_rate]
+            top_20[s] = [monthly_visits_in_milions, bounce_rate, growth_rate]
 
 
         # sorts the list by the sum of monthly_visits_in_milions + average_visited_pages + growth_rate_list
-        sorted_top20 = sorted(top_20.items(), key=lambda x: x[1][0] + x[1][1] + x[1][2], reverse=True)
+        sorted_top20 = sorted(top_20.items(), key=lambda x: (float(x[1][0]) +
+        float(x[1][2])) / float(x[1][1]), reverse=True)
 
 
         for top in sorted_top20[:20]:
             x_ticks.append(top[0])
-            # sums monthly_visits_in_milions + average_visited_pages + growth_rate_list
-            y.append(top[1][0] + top[1][1] + top[1][2])
 
+            monthly_visits_in_milions = float(top[1][0])
+            bounce_rate = float(top[1][1])
+            growth_rate = float(top[1][2])
+
+            # sums monthly_visits_in_milions + bounce_rate + growth_rate_list
+            score = (monthly_visits_in_milions + growth_rate) / bounce_rate
+
+
+            y.append(score)
+
+            print("Site :" + str(top[0]))
+            print("Monthly Visits :" + str(monthly_visits_in_milions))
+            print("Bounce Rate :" + str(bounce_rate))
+            print("Growth Rate  :" + str(growth_rate))
+            print('-------------------------------------------------------')
 
         x = np.arange(0, 20, 1)
         plt.bar(x, y)
