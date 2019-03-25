@@ -7,37 +7,39 @@ import operator
 from sklearn import preprocessing
 from data_preparation import Data_Preparation
 
+
 class Ranking:
     def __init__(self):
         try:
             self.df_site_access_statistics = pd.read_excel('sites_access_statistics.xlsx')
             self.df_interest_over_time = pd.read_excel('sites_interest_over_time.xlsx')
+            self.__access_statistics_analysis__('monthly_visits_in_milions', False)
+            self.__access_statistics_analysis__('average_visit_time', False)
+            self.__access_statistics_analysis__('average_visited_pages', False)
+            self.__access_statistics_analysis__('bounce_rate', True)
+            self.__time_interest_over_time_analysis__()
+            self.__correlation_analysis__()
+            self.__final_ranking__()
 
         except FileNotFoundError:
             dp = Data_Preparation()
             dp.__prepare_data__()
-
-        self.__access_statistics_analysis__('monthly_visits_in_milions', False)
-        self.__access_statistics_analysis__('average_visit_time', False)
-        self.__access_statistics_analysis__('average_visited_pages', False)
-        self.__access_statistics_analysis__('bounce_rate', True)
-        self.__time_interest_over_time_analysis__()
-        self.__correlation_analysis__()
-        self.__final_ranking__()
+            print('Please, manually fill up the sites_access_statistics.xlsx file.')
+            print('Next, run ranking_analysis again')
 
     def __access_statistics_analysis__(self, field, ascending=False):
         if not isinstance(field, str):
-            raise('''field must to be a string''')
+            raise ('''field must to be a string''')
         if not isinstance(ascending, bool):
-            raise('''ascending must to have bool type''')
+            raise ('''ascending must to have bool type''')
 
         x = np.arange(0, 20, 1)
         self.df_site_access_statistics = self.df_site_access_statistics.sort_values(
-        by=[field], ascending=ascending)
+            by=[field], ascending=ascending)
 
         y = self.df_site_access_statistics[field].head(20)
         plt.bar(x, y)
-        plt.xticks(x, self.df_site_access_statistics['site_name'].head(20), fontsize = 10, rotation=90)
+        plt.xticks(x, self.df_site_access_statistics['site_name'].head(20), fontsize=10, rotation=90)
         plt.title(field + ' by sites')
         plt.show()
         print(self.df_site_access_statistics['site_name'].head(20))
@@ -48,7 +50,7 @@ class Ranking:
         window_size = 4
         for site in site_name:
             interest_of_a_site = list(self.df_interest_over_time.loc[
-            self.df_interest_over_time['site_name'] == site]['interest_percentage'])
+                                          self.df_interest_over_time['site_name'] == site]['interest_percentage'])
 
             site_dict[site] = self.__calculate_average_growth_rate__(interest_of_a_site, 4)
 
@@ -62,16 +64,14 @@ class Ranking:
         x = np.arange(0, len(x_ticks), 1)
         min_value = min(y)
 
-        y = y + abs(min_value) # shift the range of values to be greater or equal to 0
+        y = y + abs(min_value)  # shift the range of values to be greater or equal to 0
 
         plt.bar(x, y)
-        plt.xticks(x, x_ticks, fontsize = 10, rotation=90)
+        plt.xticks(x, x_ticks, fontsize=10, rotation=90)
         plt.title('Average Interest Windowded-Growth Rate')
         plt.show()
 
-
-
-    def __calculate_average_growth_rate__(self, interest_of_a_site,  window_size):
+    def __calculate_average_growth_rate__(self, interest_of_a_site, window_size):
         if not isinstance(interest_of_a_site, list):
             raise TypeError('''TypeError: interest_of_a_site must to be a list''')
 
@@ -86,7 +86,7 @@ class Ranking:
             for i in range(j, window_size):
                 #  int(interest_of_a_site[i]) - int(interest_of_a_site[i-1]) is the increasing
                 # rate of the point i in relation to the i - 1
-                growth_rate_in_window += int(interest_of_a_site[i]) - int(interest_of_a_site[i-1])
+                growth_rate_in_window += int(interest_of_a_site[i]) - int(interest_of_a_site[i - 1])
 
             average_growth_list.append(growth_rate_in_window)
 
@@ -95,21 +95,22 @@ class Ranking:
 
     def __correlation_analysis__(self):
 
-        list_columns = self.df_site_access_statistics.columns[3:]
-
+        list_columns = self.df_site_access_statistics.columns[4:]
+        print(self.df_site_access_statistics)
         # scale columns values to improve the visualization
         min_max_scaler = preprocessing.MinMaxScaler()
-        x_scaled = min_max_scaler.fit_transform(self.df_site_access_statistics.iloc[:, 3:])
+        # print(self.df_site_access_statistics.iloc[:, 3:])
+        x_scaled = min_max_scaler.fit_transform(self.df_site_access_statistics.iloc[:, 4:])
         df_aux = pd.DataFrame(x_scaled, columns=list_columns)
 
         # plot the correlation graphic between all access site features
         for i in range(len(list_columns)):
-            for j in range(i + 1 , len(list_columns)):
+            for j in range(i + 1, len(list_columns)):
                 p = df_aux[list_columns[i]].corr(df_aux[list_columns[j]])
-                print(list_columns[i] + " X " + list_columns[j], "Correlation: " +  str(p))
+                print(list_columns[i] + " X " + list_columns[j], "Correlation: " + str(p))
 
                 plt.scatter(df_aux[list_columns[i]],
-                df_aux[list_columns[j]])
+                            df_aux[list_columns[j]])
 
                 plt.xlabel(list_columns[i])
                 plt.ylabel(list_columns[j])
@@ -121,22 +122,28 @@ class Ranking:
         site_names = list(self.df_site_access_statistics['site_name'])
         y = []
         x_ticks = []
+        list_growth = []
+        # builds a data structure that will contain the values of 3 features for each site
         for s in site_names:
             monthly_visits_in_milions = float(self.df_site_access_statistics.loc[
-            self.df_site_access_statistics['site_name'] == s]['monthly_visits_in_milions'])
+                                                  self.df_site_access_statistics['site_name'] == s][
+                                                  'monthly_visits_in_milions'])
             bounce_rate = float(self.df_site_access_statistics.loc[
-            self.df_site_access_statistics['site_name'] == s]['bounce_rate'])
+                                    self.df_site_access_statistics['site_name'] == s]['bounce_rate'])
             growth_rate_list = list(self.df_interest_over_time.loc[
-            self.df_interest_over_time['site_name'] == s]['interest_percentage'])
+                                        self.df_interest_over_time['site_name'] == s]['interest_percentage'])
 
             growth_rate = self.__calculate_average_growth_rate__(growth_rate_list, 4)
             top_20[s] = [monthly_visits_in_milions, bounce_rate, growth_rate]
+            list_growth.append(growth_rate)
 
+        min_growth = min(list_growth)
+        for i in top_20.items():
+            i[1][2] += abs(min_growth)
 
         # sorts the list by the sum of monthly_visits_in_milions + average_visited_pages + growth_rate_list
-        sorted_top20 = sorted(top_20.items(), key=lambda x: (float(x[1][0]) +
-        float(x[1][2])) / float(x[1][1]), reverse=True)
-
+        sorted_top20 = sorted(top_20.items(), key=lambda x: (float(x[1][0]) *
+                                                             float(x[1][2])) / float(x[1][1]), reverse=True)
 
         for top in sorted_top20[:20]:
             x_ticks.append(top[0])
@@ -145,9 +152,8 @@ class Ranking:
             bounce_rate = float(top[1][1])
             growth_rate = float(top[1][2])
 
-            # sums monthly_visits_in_milions + bounce_rate + growth_rate_list
-            score = (monthly_visits_in_milions + growth_rate) / bounce_rate
-
+            # calculates the final score (monthly_visits_in_milions * growth_rate / bounce_rate)
+            score = (monthly_visits_in_milions * growth_rate) / bounce_rate
 
             y.append(score)
 
@@ -159,16 +165,10 @@ class Ranking:
 
         x = np.arange(0, 20, 1)
         plt.bar(x, y)
-        plt.xticks(x, x_ticks, fontsize = 10, rotation=90)
+        plt.xticks(x, x_ticks, fontsize=10, rotation=90)
         plt.ylabel("Score")
         plt.title('20 top piracy sites of LatAm')
         plt.show()
-
-
-
-
-
-
 
 
 r = Ranking()

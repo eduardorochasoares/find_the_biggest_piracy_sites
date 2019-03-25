@@ -1,11 +1,6 @@
 __author__ = 'rsoares.eduardo@gmail.com (Eduardo R. Soares)'
 
-import pprint
 from googleapiclient.discovery import build
-import urllib
-from bs4 import BeautifulSoup
-import requests
-import webbrowser
 import re
 from pytrends.request import TrendReq
 import pandas as pd
@@ -43,7 +38,7 @@ class Data_Preparation:
     def __get_candidates__(self, country_name):
         if type(country_name) is not str:
             raise TypeError("__get_candidates__ expects a str as country_name")
-
+        # set the language used in the google search
         if country_name == "Brazil":
             lr = "lang_pt"
             queries = ['séries e filmes torrent gratis', 'séries e filmes online gratis']
